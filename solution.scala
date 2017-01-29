@@ -2,38 +2,40 @@
 object Solution {
 
     case class Point(var x:Int,var y:Int){
-      
     }
     
     def ccw (p1:Point, p2:Point,p3:Point):Int = (p2.x-p1.x)*(p3.y-p1.y)-(p2.y-p1.y)*(p3.x-p1.x)
-          
+    
+    def delta(p1:Point,p2:Point) = Point(p2.x-p1.x,p2.y-p1.y) 
+        
     def LRPoint(ps:List[Point]):Point = {
-        return ps.reduceLeft((a:Point,b:Point) => {
-        if (a.y < b.y){
-            return a
-        }
-        else if (b.y < a.y){
-            return b
-        }
-        else if (a.x > b.y){
-            return a
-        }
-        else {
-            return b
-        }
-     })
-                             }
+        return ps.reduce((a:Point,b:Point) => {
+        val d = delta(a,b)
+        if (d.y > 0 || (d.y == 0 && d.x <= 0) ) a else b 
+       })
+     }
                              
     def parsePoint(str:String):Point = {
         val coords = str.split(" ")
         return Point(coords(0).toInt,coords(1).toInt)
     }
     
-    def sortPoints(ps:List[Point],lr:Point): List[Point] = {
-        return ps.sortBy(p=> {
-            (p.y - lr.y)/(1.0*( p.x - lr.x) )
+    def compareDelta(p:Int,q:Int):Int = {
+        if (p >= 0 && q < 0) -1
+        else if (q >= 0 && p < 0) +1
+        else 0
+    }
+    
+    def polarOrderSorted(ps:List[Point],lr:Point): List[Point] = {
+        return ps.sortWith((p,q)=> {
+             val pd = delta(lr,p)
+             val qd = delta(lr,q)
+             val cy = compareDelta(pd.y,qd.y)
             
-        })
+             if (cy != 0) {cy > 0}
+             else if (pd.y==0 && qd.y == 0) {compareDelta(pd.x,qd.x) > 0}
+             else  {-ccw(lr,p,q) > 0 }
+        }).reverse
     }
     
     def printPoints(ps:List[Point]){
@@ -72,12 +74,11 @@ object Solution {
     }
     
     def convexHullPoints(lr:Point,sps:List[Point]):List[Point]= {
-          sps.tail.foldLeft(List(lr,sps.head))(verifyPoint) 
+          (sps.tail).foldLeft(List(lr,sps.head))(verifyPoint) 
     }
     
     def main(args: Array[String]) {
         val input : List[String] = io.Source.stdin.getLines().to[List]
-        //val input : List[String] =  List("3","0 0","3 0","3 4")
         val lines = input.tail
 
         if (lines.length <= 1) {
@@ -86,8 +87,13 @@ object Solution {
         else {
             val points = lines.map(parsePoint)
             val lr = LRPoint(points)
-            val sPoints = sortPoints(points.filter(_!=lr),lr)
+            // println("Lowest Right Point",lr.x,lr.y)
+            val sPoints = polarOrderSorted(points.filter(_!=lr),lr)
+            // printPoints(sPoints)
             val fPoints = convexHullPoints(lr,sPoints)
+            // println("Convex Hull")
+            // printPoints(fPoints)
+            // println("Perimeter")
             println(perimeter(lr +: fPoints))
         }
     }
